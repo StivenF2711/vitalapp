@@ -1,0 +1,58 @@
+name: Deploy Django App
+
+on:
+  push:
+    branches:
+      - main  # Puede ser la rama en la que quieras automatizar el despliegue
+
+jobs:
+  test:
+    runs-on: ubuntu-latest  # El entorno en el que se ejecutarán las pruebas
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.13.1'  # La versión de Python que estás usando
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          python manage.py migrate  # Aplica las migraciones
+          python manage.py test  # Ejecuta las pruebas
+
+  deploy:
+    runs-on: ubuntu-latest  # El entorno de despliegue
+
+    needs: test  # Asegura que las pruebas pasen antes del despliegue
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build Docker image
+        run: |
+          docker build -t my-django-app .  # Construye la imagen Docker
+
+      - name: Deploy to Server
+        run: |
+          ssh -o StrictHostKeyChecking=no user@your-server-ip 'docker pull my-django-app && docker run -d -p 8000:8000 my-django-app'
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}  # Asegúrate de tener una clave SSH en los secretos de GitHub para acceder a tu servidor
